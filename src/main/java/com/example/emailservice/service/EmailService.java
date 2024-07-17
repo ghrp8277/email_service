@@ -1,6 +1,10 @@
 package com.example.emailservice.service;
 
 import com.example.emailservice.entity.EmailCount;
+import com.example.emailservice.exception.CodeExpiredException;
+import com.example.emailservice.exception.EmailSendFailedException;
+import com.example.emailservice.exception.InvalidCodeException;
+import com.example.emailservice.exception.InvalidLengthException;
 import com.example.emailservice.repository.EmailCountRepository;
 import org.springframework.mail.SimpleMailMessage;
 import com.example.emailservice.constants.RedisConstants;
@@ -40,7 +44,7 @@ public class EmailService {
 
     public static String generateRandomCode(int length) {
         if (length <= 0) {
-            throw new IllegalArgumentException("Length must be greater than 0");
+            throw new InvalidLengthException();
         }
         Random random = new Random();
         StringBuilder code = new StringBuilder(length);
@@ -61,7 +65,7 @@ public class EmailService {
             sendVerificationEmail(email, code);
             incrementEmailCount(userId);
         } catch (MessagingException e) {
-            logger.error("Failed to send verification email to {}", email, e);
+            throw new EmailSendFailedException();
         }
 
         return "Success";
@@ -70,6 +74,15 @@ public class EmailService {
     public boolean verifyEmailCode(Long userId, String email, String code) {
         String key = RedisConstants.VERIFICATION_CODE_KEY_PREFIX + userId;
         String storedCode = (String) redisTemplate.opsForValue().get(key);
+
+        if (storedCode == null) {
+            throw new CodeExpiredException();
+        }
+
+        if (!code.equals(storedCode)) {
+            throw new InvalidCodeException();
+        }
+
         return code.equals(storedCode);
     }
 
