@@ -20,14 +20,14 @@ public class EmailServiceTmpl extends EmailServiceGrpc.EmailServiceImplBase {
     @Override
     @GrpcExceptionHandler
     public void emailSend(EmailSendRequest request, StreamObserver<Response> responseObserver) {
-        String message = emailService.emailCodeInRedisWithTTL(request.getUserId(), request.getEmail());
+        String message = emailService.emailCodeInRedisWithTTL(request.getEmail());
         grpcResponseHelper.sendJsonResponse("message", message, responseObserver);
     }
 
     @Override
     @GrpcExceptionHandler
     public void verifyEmailCode(VerifyEmailCodeRequest request, StreamObserver<Response> responseObserver) {
-        boolean isValid = emailService.verifyEmailCode(request.getUserId(), request.getEmail(), request.getCode());
+        boolean isValid = emailService.verifyEmailCode(request.getEmail(), request.getCode());
         grpcResponseHelper.sendJsonResponse("isValid", isValid, responseObserver);
     }
 }

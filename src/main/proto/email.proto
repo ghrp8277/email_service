@@ -12,14 +12,12 @@ service EmailService {
 }
 
 message EmailSendRequest {
-    uint64 userId = 1;
-    string email = 2;
+    string email = 1;
 }
 
 message VerifyEmailCodeRequest {
-    uint64 userId = 1;
-    string email = 2;
-    string code = 3;
+    string email = 1;
+    string code = 2;
 }
 
 message Response {

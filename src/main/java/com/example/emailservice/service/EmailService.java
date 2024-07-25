@@ -1,14 +1,10 @@
 package com.example.emailservice.service;
 
 import com.example.emailservice.entity.EmailCount;
-import com.example.emailservice.exception.CodeExpiredException;
-import com.example.emailservice.exception.EmailSendFailedException;
-import com.example.emailservice.exception.InvalidCodeException;
-import com.example.emailservice.exception.InvalidLengthException;
+import com.example.emailservice.exception.*;
 import com.example.emailservice.repository.EmailCountRepository;
 import org.springframework.mail.SimpleMailMessage;
 import com.example.emailservice.constants.RedisConstants;
-import com.example.emailservice.repository.EmailTokenRepository;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +25,6 @@ public class EmailService {
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
     private final JavaMailSender mailSender;
     private final RedisTemplate<String, Object> redisTemplate;
-
-    @Autowired
-    private EmailTokenRepository emailTokenRepository;
 
     @Autowired
     private EmailCountRepository emailCountRepository;
@@ -55,24 +48,29 @@ public class EmailService {
         return code.toString();
     }
 
-    public String emailCodeInRedisWithTTL(Long userId, String email) {
+    public String emailCodeInRedisWithTTL(String email) {
         String code = generateRandomCode(RedisConstants.VERIFICATION_CODE_LENGTH);
-        String key = RedisConstants.VERIFICATION_CODE_KEY_PREFIX + userId;
+        String key = RedisConstants.VERIFICATION_CODE_KEY_PREFIX + email;
+        String storedCode = (String) redisTemplate.opsForValue().get(key);
 
-        redisTemplate.opsForValue().set(key, code, RedisConstants.DEFAULT_EXPIRATION_SECONDS, TimeUnit.SECONDS);
+        if (storedCode == null){
+            redisTemplate.opsForValue().set(key, code, RedisConstants.DEFAULT_EXPIRATION_SECONDS, TimeUnit.SECONDS);
 
-        try {
-            sendVerificationEmail(email, code);
-            incrementEmailCount(userId);
-        } catch (MessagingException e) {
-            throw new EmailSendFailedException();
+            try {
+                sendVerificationEmail(email, code);
+                incrementEmailCount(email);
+            } catch (MessagingException e) {
+                throw new EmailSendFailedException();
+            }
+
+            return "Success";
         }
 
-        return "Success";
+        throw new CodeAlreadyRequestedException();
     }
 
-    public boolean verifyEmailCode(Long userId, String email, String code) {
-        String key = RedisConstants.VERIFICATION_CODE_KEY_PREFIX + userId;
+    public boolean verifyEmailCode(String email, String code) {
+        String key = RedisConstants.VERIFICATION_CODE_KEY_PREFIX + email;
         String storedCode = (String) redisTemplate.opsForValue().get(key);
 
         if (storedCode == null) {
@@ -95,8 +93,8 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    public void incrementEmailCount(Long userId) {
-        Optional<EmailCount> optionalEmailCount = emailCountRepository.findById(userId);
+    public void incrementEmailCount(String email) {
+        Optional<EmailCount> optionalEmailCount = emailCountRepository.findByEmail(email);
         EmailCount emailCount;
 
         if (optionalEmailCount.isPresent()) {
@@ -105,7 +103,7 @@ public class EmailService {
             emailCount.setUpdateDate(LocalDateTime.now());
         } else {
             emailCount = new EmailCount();
-            emailCount.setId(userId);
+            emailCount.setEmail(email);
             emailCount.setCount(1);
             emailCount.setDate(LocalDateTime.now());
             emailCount.setUpdateDate(LocalDateTime.now());
