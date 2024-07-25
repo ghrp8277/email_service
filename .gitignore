@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Exclude .env file from being ignored
+!.env
