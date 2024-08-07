@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-deployment
+  namespace: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email
+  template:
+    metadata:
+      labels:
+        app: email
+    spec:
+      containers:
+        - name: spring-email-container
+          image: 192.168.0.212:5555/spring-email:20240806-093619
+          ports:
+            - name: grpc
+              containerPort: 3091
+          volumeMounts:
+            - name: email-logs
+              mountPath: /usr/src/main/logs
+          env:
+            - name: DATABASE_HOST
+              value: "email-mysql-master-service"
+            - name: DATABASE_PORT
+              value: "3306"
+            - name: DATABASE_USER
+              value: root
+            - name: DATABASE_PASSWORD
+              value: testtest
+
+        - name: mysql-master-container
+          image: 192.168.0.212:5555/mysql:latest
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: testtest
+            - name: MYSQL_DATABASE
+              value: main
+            - name: MYSQL_ALLOW_EMPTY_PASSWORD
+              value: "no"
+            - name: MYSQL_ROOT_HOST
+              value: "%"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: email-mysql-master-data
+              mountPath: /var/lib/mysql
+
+        - name: phpmyadmin-container
+          image: 192.168.0.212:5555/phpmyadmin/phpmyadmin
+          ports:
+            - containerPort: 80
+          env:
+            - name: PMA_HOST
+              value: "email-mysql-master-service"
+            - name: PMA_PORT
+              value: "3306"
+            - name: PMA_USER
+              value: root
+            - name: PMA_PASSWORD
+              value: testtest
+
+        - name: redis-container
+          image: 192.168.0.212:5555/redis:latest
+          ports:
+            - containerPort: {{ .Values.redis.master.env.port }}
+          volumeMounts:
+            - name: email-redis-data
+              mountPath: {{ .Values.redis.master.volume.mountPath }}
+
+        - name: redis-gui-container
+          image: 192.168.0.212:5555/rediscommander/redis-commander:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: REDIS_HOSTS
+              value: "email-redis-service"
+            - name: USER
+              value: {{ .Values.redis.master.env.user }}
+            - name: PASSWORD
+              value: {{ .Values.redis.master.env.password }}
+
+        - name: fluent-bit
+          image: 192.168.0.212:5555/fluent/fluent-bit
+          volumeMounts:
+            - name: email-fluent-config
+              mountPath: /fluent-bit/etc/fluent-bit.conf
+              subPath: fluent-bit.conf
+            - name: email-logs
+              mountPath: /usr/src/main/logs
+
+      volumes:
+        - name: email-logs
+          persistentVolumeClaim:
+            claimName: email-logs-pvc
+        - name: email-mysql-master-data
+          persistentVolumeClaim:
+            claimName: email-mysql-master-data-pvc
+        - name: email-redis-data
+          persistentVolumeClaim:
+            claimName: email-redis-data-pvc
+        - name: email-fluent-config
+          configMap:
+            name: email-fluent-bit-config

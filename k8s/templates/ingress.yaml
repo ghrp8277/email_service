@@ -1,0 +1,43 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: email-phpmyadmin-ingress
+  namespace: prod
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /phpmyadmin-email(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: email-phpmyadmin-service
+                port:
+                  number: 3080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: email-redis-gui-ingress
+  namespace: prod
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /redis-email(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: email-redis-gui-service
+                port:
+                  number: 3081
