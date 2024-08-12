@@ -5,6 +5,11 @@ metadata:
   namespace: prod
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: email
@@ -15,7 +20,7 @@ spec:
     spec:
       containers:
         - name: spring-email-container
-          image: 192.168.0.212:5555/spring-email:20240812-193043
+          image: 192.168.0.212:5555/spring-email:20240812-223932
           ports:
             - name: grpc
               containerPort: 3091
