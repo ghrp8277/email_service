@@ -18,6 +18,15 @@ public class EmailServiceTmpl extends EmailServiceGrpc.EmailServiceImplBase {
     private GrpcResponseHelper grpcResponseHelper;
 
     @Override
+    public void check(HealthCheckRequest request, StreamObserver<HealthCheckResponse> responseObserver) {
+        HealthCheckResponse response = HealthCheckResponse.newBuilder()
+                .setStatus(HealthCheckResponse.ServingStatus.SERVING)
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
     @GrpcExceptionHandler
     public void emailSend(EmailSendRequest request, StreamObserver<Response> responseObserver) {
         String message = emailService.emailCodeInRedisWithTTL(request.getEmail());

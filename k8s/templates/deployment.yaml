@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: spring-email-container
-          image: 192.168.0.212:5555/spring-email:20240806-093619
+          image: 192.168.0.212:5555/spring-email:20240812-193043
           ports:
             - name: grpc
               containerPort: 3091
@@ -31,6 +31,22 @@ spec:
               value: root
             - name: DATABASE_PASSWORD
               value: testtest
+          livenessProbe:
+            exec:
+              command:
+                - /app/grpc-health-probe
+                - -addr=:3091
+                - -rpc-timeout=2s
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command:
+                - /app/grpc-health-probe
+                - -addr=:3091
+                - -rpc-timeout=2s
+            initialDelaySeconds: 10
+            periodSeconds: 30
 
         - name: mysql-master-container
           image: 192.168.0.212:5555/mysql:latest
